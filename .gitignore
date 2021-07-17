@@ -87,7 +87,6 @@ api/**/*.d.ts
 .nuxt
 dist
 
-client
 !client/dist
 
 # Gatsby files
