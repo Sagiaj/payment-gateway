@@ -1,0 +1,126 @@
+{
+  "riskAssessmntData": {
+    "traExmptn": "true",
+    "delgtdAthntctn": "true",
+    "trustdMerchntExmptn": "true",
+    "scpExmptn": "true",
+    "lowVlExmptn": "true"
+  },
+  "msgIdentfctn": {
+    "correlatnId": "12bc567d90f23e56a8f012",
+    "origId": "123451234567890"
+  },
+  "Hdr": {
+    "TracData": {
+      "Val": "anyroundtripinfo",
+      "Tp": "AddtnlTraceData"
+    }
+  },
+  "Body": {
+    "Tx": {
+      "AddtlSvc": {
+        "Tp": "DCCV"
+      },
+      "TxAttr": "RCPT",
+      "TxDesc": "transactiondescription",
+      "TxId": {
+        "LocalDateTime": "2021-01-02T15:40:12"
+      },
+      "AddtlData": {
+        "Val": "freeformdata",
+        "Tp": "freeFormDescrptnData"
+      },
+      "AltrnMsgRsn": "2501",
+      "SpclPrgrmmQlfctn": {
+        "Dtls": {
+          "Val": "Y",
+          "Nm": "CPS"
+        }
+      },
+      "TxAmts": {
+        "TxAmt": {
+          "Ccy": "840",
+          "Amt": "51.29"
+        }
+      }
+    },
+    "Envt": {
+      "Accptr": {
+        "AddtlId": "52014057",
+        "CstmrSvc": "1 4155552235",
+        "SpnsrdMrchnt": {
+          "Id": {
+            "Id": "520140578465770"
+          }
+        },
+        "ShrtNm": "ABC Supplies",
+        "AddtlData": {
+          "Val": "42999952606",
+          "Tp": "ISOid"
+        },
+        "Id": "0123456789012345678901234567893",
+        "Adr": {
+          "Ctry": "US"
+        }
+      },
+      "Termnl": {
+        "TermnlId": {
+          "Id": "52014057"
+        }
+      },
+      "Wllt": {
+        "Prvdr": {
+          "Id": "VCIND"
+        }
+      },
+      "Card": {
+        "XpryDt": "2212",
+        "PAN": "4234567890123456"
+      }
+    },
+    "Cntxt": {
+      "Vrfctn": [{
+        "VrfctnInf": {
+          "Val": {
+            "TxtVal": "321"
+          }
+        },
+        "Tp": "CSCV"
+      }],
+      "TxCntxt": {
+        "MrchntCtgyCd": 4814,
+        "MrchntCtgySpcfcData": "B"
+      },
+      "PtOfSvcCntxt": {
+        "MOTOInd": "true",
+        "PrtlApprvlSpprtd": "true",
+        "SpclConds": {
+          "Id": "2"
+        },
+        "CardDataNtryMd": "CDFL",
+        "EComrcData": [{
+            "Val": "5",
+            "Tp": "ECI"
+          },
+          {
+            "Val": "EEC4567F90123A5678B0123EA67890D2345678FF",
+            "Tp": "XID"
+          }
+        ]
+      },
+      "RskCntxt": {
+        "RskInptData": {
+          "Val": "10.203.123.456",
+          "Tp": "IPAddr"
+        },
+        "RskAssmnt": {
+          "RskAssmntTp": "VCAS",
+          "Rslt": "9"
+        }
+      },
+      "SaleCntxt": {
+        "GoodsAndSvcsTp": "ELEC"
+      }
+    }
+  }
+}

@@ -43,6 +43,11 @@ jspm_packages/
 
 # TypeScript v1 declaration files
 typings/
+config.json
+api/**/*.json
+api/**/*.js
+api/**/*.js.map
+api/**/*.d.ts
 
 # TypeScript cache
 *.tsbuildinfo
@@ -81,6 +86,9 @@ typings/
 # Nuxt.js build / generate output
 .nuxt
 dist
+
+client
+!client/dist
 
 # Gatsby files
 .cache/
