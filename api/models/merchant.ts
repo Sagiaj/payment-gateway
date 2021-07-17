@@ -1,5 +1,6 @@
 export default class Merchant {
   id: string = "";
+  name: string = "";
   access_key: string = "";
   secret_key: string = "";
   
@@ -7,9 +8,10 @@ export default class Merchant {
     const merchant = new Merchant();
 
     if (db_result) {
-      merchant.id = db_result["gateway_merchant_id"] || "";
-      merchant.access_key = db_result["gateway_merchant_access_key"] || "";
-      merchant.secret_key = db_result["gateway_merchant_secret_key"] || "";
+      merchant.id = db_result["merchant_id"] || "";
+      merchant.access_key = db_result["merchant_access_key"] || "";
+      merchant.secret_key = db_result["merchant_secret_key"] || "";
+      merchant.name = db_result["merchant_name"] || "";
     }
     return merchant;
   }

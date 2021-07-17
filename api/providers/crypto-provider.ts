@@ -29,4 +29,16 @@ export default class CryptoProvider {
       return false;
     }
   }
+
+  static generateSHA1Hash(correlation_id: string, input: string) {
+    const method_name = "CryptoProvider/generateSHA1Hash";
+    AppLogger.info(correlation_id, `${method_name} - start`);
+    try {
+      AppLogger.info(correlation_id, `${method_name} - end`);
+      return crypto.createHash("sha1").update(input).digest('hex').toString();
+    } catch (err) {
+      AppLogger.error(correlation_id, `${method_name} - Error=`, err);
+      throw err;
+    }
+  }
 }

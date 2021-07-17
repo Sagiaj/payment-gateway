@@ -1,6 +1,6 @@
-import { ErrorCodes } from "../error-codes";
-import Merchant from "../models/merchant";
-import MerchantDBProvider from "../providers/merchant-provider";
+import { ErrorCodes } from "../../error-codes";
+import Merchant from "../../models/merchant";
+import MerchantDBProvider from "../../providers/merchant-provider";
 
 export default class MerchantService {
   static async getMerchantSecretByAccessKey(correlation_id: string, access_key: string): Promise<Merchant> {

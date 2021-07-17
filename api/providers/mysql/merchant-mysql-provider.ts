@@ -7,13 +7,13 @@ export default class MerchantMySQLProvider {
     AppLogger.info(correlation_id, `${method_name} - start`);
     try {
       const params = [access_key];
-      const sql = `
-      SET @ACCESS_KEY=?;
-
-      SELECT * FROM gateway_merchants
-      WHERE gateway_merchant_access_key=@ACCESS_KEY
-      LIMIT 1;
-      `;
+      const sql = `SELECT merchant_id,
+        merchant_access_key,
+        merchant_secret_key,
+        merchant_name
+        FROM merchants
+        WHERE merchant_access_key=?
+        LIMIT 1;`;
 
       const results = await BaseMySQLProvider.executeQueryOkPacket(correlation_id, sql, params);
       return results;

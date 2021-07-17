@@ -1,8 +1,8 @@
 import { Express } from "express";
-import { readFileSync } from "fs";
 import { ErrorCodes } from "../error-codes";
-import { json as bodyParser } from "body-parser";
 import ConfigurationUtility from "../utilities/configuration-utility";
+import { json, urlencoded } from "body-parser";
+import cors from "cors";
 
 export const bootstrapApplication = async (expressApp: Express): Promise<Express> => {
   try {
@@ -13,14 +13,20 @@ export const bootstrapApplication = async (expressApp: Express): Promise<Express
       error: (correlation_id: string, ...params: any) => console.error(correlation_id, ...params)
     };
 
-    expressApp.use(bodyParser());
+    expressApp.use(urlencoded({ extended: false }));
+    expressApp.use(json());
+    expressApp.use(cors({
+      origin: (origin: string, callback) => {
+        callback(null, true);
+      }
+    }));
 
-    // Global
-    let config = await ConfigurationUtility.initializeConfiguration();
-    if (config && config["dev"]) {
-      config = { ...config, ...config["dev"] };
+    if (!global["initConfig"]) {
+      global["initConfig"] = require("../../config.json");
     }
-    global["Globals"] = config;
+    
+    // Global
+    await ConfigurationUtility.initializeConfiguration();
     return expressApp;
   } catch (err) {
     AppLogger.error("bootstrapApplication", `Failed to bootstrap application. error:`, err);

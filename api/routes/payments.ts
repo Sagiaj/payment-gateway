@@ -3,6 +3,7 @@ import PaymentsController from "../controllers/payments-controller";
 
 const router = Router();
 
-router.post("/card", PaymentsController.createCardPayment);
+router.post("/card/:card_network_type", PaymentsController.createCardPayment);
+router.post("/card/authorize/:card_network_type", PaymentsController.authorizeCardTransaction);
 
-export const merchantRoutes = router;
+export const paymentRoutes = router;

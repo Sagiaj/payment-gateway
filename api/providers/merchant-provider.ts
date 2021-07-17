@@ -7,7 +7,7 @@ export default class MerchantDBProvider {
     AppLogger.info(correlation_id, `${method_name} - start`);
     try {
       const dbResult = await MerchantMySQLProvider.getMerchantSecretByAccessKey(correlation_id, access_key);
-      const merchant = Merchant.parseFromDB(dbResult);
+      const merchant = Merchant.parseFromDB(dbResult[0]);
       return merchant;
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name}`)

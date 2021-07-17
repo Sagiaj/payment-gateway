@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { ErrorCodes } from '../error-codes';
 import Merchant from "../models/merchant";
 import CryptoService from "../services/crypto-service";
-import MerchantService from "../services/merchant-service";
+import MerchantService from "../services/business/merchant-service";
 
 export const isAuthorized3rdParty = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   const method_name = `Middleware/isAuthorized3rdParty`;
@@ -25,8 +25,7 @@ export const isAuthorized3rdParty = async (req: Request, res: Response, next: Ne
       bodyString = JSON.stringify(req.body);
       bodyString = bodyString == "{}" ? "" : bodyString;
     }
-    
-    AppLogger.verbose(correlation_id, `before signing::::`, `salt=${req.headers["salt"]}, timestamp=${req.headers["timestamp"]}, access_key=${req.headers["access_key"]}, merchant.secret_key=${merchant.secret_key}, bodyString=${bodyString}`)
+
     let toSign = `${req.headers["salt"]}${req.headers["timestamp"]}${req.headers["access_key"]}${merchant.secret_key}${bodyString}`;
     let toSignExtended = req.method.toLowerCase() + req.url + toSign;
     AppLogger.verbose(correlation_id, `toSignExtended=${toSignExtended}`);
