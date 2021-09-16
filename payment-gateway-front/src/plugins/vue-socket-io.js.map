@@ -1,0 +1,1 @@
+{"version":3,"file":"vue-socket-io.js","sourceRoot":"","sources":["vue-socket-io.ts"],"names":[],"mappings":";;;;;AACA,gEAAwC;AAExC,mBAAe,UAAC,KAAU,IAAK,OAAA,IAAI,uBAAW,CAAC;IAC7C,KAAK,EAAE,IAAI;IACX,UAAU,EAAE,uBAAuB;IACnC,IAAI,EAAE;QACF,KAAK,OAAA;QACL,YAAY,EAAE,SAAS;QACvB,cAAc,EAAE,SAAS;KAC5B;CACF,CAAC,EAR6B,CAQ7B,EAAA"}

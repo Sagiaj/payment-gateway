@@ -29,7 +29,7 @@ export default class WebhookController {
       AppLogger.verbose(correlation_id, `${method_name} - calling GatewayService/processGatewayAction`);
       const action_result = await GatewayService.processGatewayAction(correlation_id, provider_name, action_name, req);
       AppLogger.info(correlation_id, `${method_name} - end. action_result=`, action_result);
-      return res.send(JSON.parse(action_result));
+      return res.send(action_result);
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name} - Failed to process 3DS version webhook. Error:`, err);
       return next(ErrorCodes.ERROR_WH_PROCESS_3DS_VERSION);
@@ -88,24 +88,6 @@ export default class WebhookController {
       if (!provider_name) {
         AppLogger.error(correlation_id, `${method_name} - No provider name given.`);
       }
-
-      const req_body_Example = {
-        "server_trans_id": "ad0fffeb-bfff-44d0-881f-b857fe77c5a2",
-        "acs_trans_id": "13c701a3-5a88-4c45-89e9-ef65e50a8bf9",
-        "ds_trans_id": "c272b04f-6e7b-43a2-bb78-90f4fb94aa25",
-        "authentication_type": "DYNAMIC_CHALLENGE",
-        "challenge_mandated": true,
-        "status": "DECOUPLED_AUTHENTICATION_CONFIRMED",
-        "status_reason": "LOW_CONFIDENCE",
-        "challenge_request_url": "https://test.portal.gpwebpay.com/pay-sim-gpi/sim/acs",
-        "authentication_source": "BROWSER",
-        "message_category": "PAYMENT_AUTHENTICATION",
-        "message_version": "2.2.0",
-        "encoded_creq": "eyJ0aHJlZURTU2VydmVyVHJhbnNJRCI6ImFmNjVjMzY5LTU5YjktNGY4ZC1iMmY2LTdkN2Q1ZjVjNjlkNSIsImFjc1RyYW5zSUQiOiIxM2M3MDFhMy01YTg4LTRjNDUtODllOS1lZjY1ZTUwYThiZjkiLCJjaGFsbGVuZ2VXaW5kb3dTaXplIjoiNjAweDQwMCIsIm1lc3NhZ2VUeXBlIjoiQ3JlcSIsIm1lc3NhZ2VWZXJzaW9uIjoiMi4xLjAifQ",
-        "acs_reference_number": "3DS_LOA_ACS_201_13579",
-        "decoupled_response_indicator": "DECOUPLED_AUTHENTICATION_UTILISED",
-        "whitelist_status": "PENDING_CARDHOLDER_CONFIRMATION"
-     };
 
       AppLogger.verbose(correlation_id, `${method_name} - CHECK THIS!!!!`, JSON.stringify({
         params: req.params,

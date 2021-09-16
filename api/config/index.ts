@@ -1,10 +1,11 @@
 import { Express } from "express";
 import { ErrorCodes } from "../error-codes";
 import ConfigurationUtility from "../utilities/configuration-utility";
+import * as http from "http";
 import { json, urlencoded } from "body-parser";
 import cors from "cors";
 
-export const bootstrapApplication = async (expressApp: Express): Promise<Express> => {
+export const bootstrapApplication = async (expressApp: Express): Promise<http.Server> => {
   try {
     global["AppLogger"] = {
       silly: (correlation_id: string, ...params: any) => console.log(correlation_id, ...params),
@@ -16,8 +17,9 @@ export const bootstrapApplication = async (expressApp: Express): Promise<Express
     expressApp.use(urlencoded({ extended: false }));
     expressApp.use(json());
     expressApp.use(cors({
+      preflightContinue: true,
       origin: (origin: string, callback) => {
-        callback(null, true);
+        callback(null, origin);
       }
     }));
 
@@ -27,7 +29,8 @@ export const bootstrapApplication = async (expressApp: Express): Promise<Express
     
     // Global
     await ConfigurationUtility.initializeConfiguration();
-    return expressApp;
+    const httpServer = http.createServer(expressApp);
+    return httpServer;
   } catch (err) {
     AppLogger.error("bootstrapApplication", `Failed to bootstrap application. error:`, err);
     return Promise.reject(ErrorCodes.ERROR_APPLICATION_BOOTSTRAP_FAILURE);

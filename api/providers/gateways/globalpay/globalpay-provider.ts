@@ -6,12 +6,16 @@ import CryptoProvider from "../../crypto-provider";
 import { BaseGatewayProvider, IBaseGatewayProviderWebhook } from "../base-gateway-provider";
 import { GatewayProviderFactory } from "../gateway-provider-factory";
 import { GlobalpayConfig } from "./globalpay-config";
-// import * as GlobalPay from "globalpayments-api";
+import * as GlobalPay from "globalpayments-api";
 import * as GlobalPayThreeDS from "globalpayments-3ds";
+import { StringArray } from "aws-sdk/clients/rdsdataservice";
+import { TransactionType } from "globalpayments-api";
 
 export enum ProviderActions {
   Check3DSVersion = "Check3DSVersion",
-  Initiate3DSAuthentication = "Initiate3DSAuthentication"
+  Initiate3DSAuthentication = "Initiate3DSAuthentication",
+  Obtain3DSAuthenticationData = "Obtain3DSAuthenticationData",
+  authorize3DSPayment = "authorize3DSPayment"
 };
 
 export enum ProviderWebhookActions {
@@ -19,6 +23,39 @@ export enum ProviderWebhookActions {
   ThreeDSComplete = "3ds-complete",
   ACSComplete = "acs-complete",
 };
+
+const buildACSScriptTag = (script_type: ProviderWebhookActions, script_data: string) => {
+  let returnedScript = ``;
+  switch(script_type) {
+    case ProviderWebhookActions.MethodURLNotification:
+      returnedScript = `<script>
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          event: 'methodNotification',
+          data: ${script_data}
+        }, '${Globals.base_front_url}');
+      }
+    </script>`;
+    break;
+    case ProviderWebhookActions.ThreeDSComplete:
+      break;
+      case ProviderWebhookActions.ACSComplete:
+        returnedScript = `<script>
+          if (window.parent !== window) {
+            window.parent.postMessage({
+              event: 'challengeNotification',
+              data: ${script_data}
+            }, '${Globals.base_front_url}');
+          }
+        </script>`;
+      break;
+    default:
+      throw "Unknown script type";
+      break;
+  }
+
+  return returnedScript;
+}
 
 export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatewayProviderWebhook {
   private config = Globals.gateways_config.globalpay;
@@ -74,8 +111,15 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
           AppLogger.verbose(correlation_id, `${method_name} - calling GlobalpayProvider/Initiate3DSAuthentication`);
           result = await this.Initiate3DSAuthentication(correlation_id, req);
           break;
+        case ProviderActions.Obtain3DSAuthenticationData:
+          AppLogger.verbose(correlation_id, `${method_name} - calling GlobalpayProvider/Obtain3DSAuthenticationData`);
+          result = await this.obtainAuthenticationData(correlation_id, req);
+          break;
+        case ProviderActions.authorize3DSPayment:
+          AppLogger.verbose(correlation_id, `${method_name} - calling GlobalpayProvider/authorize3DSPayment`);
+          result = await this.authorize3DSPayment(correlation_id, req);
+          break;
         default:
-          console.log("in UNKNOWN. rejecting")
           return Promise.reject("Unknown Action name " + action_name);
       }
 
@@ -99,15 +143,14 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         case ProviderWebhookActions.MethodURLNotification:
           decoded_body = JSON.parse(Buffer.from(body["threeDSMethodData"], "base64").toString("utf8"));
           AppLogger.info(correlation_id, `${method_name} - decoding MethodURLNotification webhook. decoded_body=`, decoded_body);
-          result = JSON.stringify(decoded_body);
+          result = buildACSScriptTag(ProviderWebhookActions.MethodURLNotification, JSON.stringify(decoded_body));
           break;
         case ProviderWebhookActions.ThreeDSComplete:
-          console.log("in ThreeDSComplete. exiting")
           break;
         case ProviderWebhookActions.ACSComplete:
           decoded_body = JSON.parse(Buffer.from(body["cres"], "base64").toString("utf8"));
           AppLogger.info(correlation_id, `${method_name} - decoding ACSComplete webhook. decoded_body=`, decoded_body);
-          result = JSON.stringify(decoded_body);
+          result = buildACSScriptTag(ProviderWebhookActions.ACSComplete, JSON.stringify(decoded_body));
           break;
         default:
           return Promise.reject("Unknown Action name " + action_name);
@@ -121,7 +164,7 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
     }
   }
 
-  private async check3DSVersion(correlation_id: string, merchant_id: string, card_number: string): Promise<string> {
+  private async check3DSVersion(correlation_id: string, merchant_id: string, card_number: string): Promise<any> {
     const method_name = "GlobalpayProvider/check3DSVersion";
     AppLogger.info(correlation_id, `${method_name} - start`);
     try {
@@ -149,7 +192,7 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
       });
       
       AppLogger.info(correlation_id, `${method_name} - end`, response.data);
-      return JSON.stringify(<GlobalPayThreeDS.ICheckVersionResponseData>{
+      return <GlobalPayThreeDS.ICheckVersionResponseData>{
         enrolled: response.data["enrolled"],
         serverTransactionId: response.data["server_trans_id"],
         methodData: response.data["method_data"]["encoded_method_data"],
@@ -160,7 +203,7 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
             end: response.data["ds_protocol_version_end"]
           }
         }
-      });
+      };
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name} Error=`, err);
       return Promise.reject(err);
@@ -175,6 +218,7 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
       const base_wh_url = `${Globals.webhooks.base_url}/${GatewayProviderFactory.GatewayProviders.GlobalPay}`;
       const request_timestamp = reqBody.card.request_timestamp;
       const server_trans_id = req.body["serverTransactionId"];
+      const transaction_id = uuid();
       AppLogger.verbose(correlation_id, `${method_name} - calling GlobalpayProvider/generateInitiateAuthenticationHash`);
       const securehash = this.generateInitiateAuthenticationHash(correlation_id, request_timestamp, this.config.merchant_id, req.body["card"]["number"], server_trans_id);
       let body = {
@@ -196,9 +240,9 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         },
         order: {
             date_time_created: request_timestamp,
-            amount: "100",
-            currency: "EUR",
-            id: uuid(),
+            amount: reqBody.transactionData.amount,
+            currency: reqBody.transactionData.currency,
+            id: transaction_id,
             address_match_indicator: "false",
             shipping_address: {
               line1: "Apartment 852",
@@ -250,6 +294,8 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         AppLogger.error(correlation_id, `${method_name} - Failed Initiating 3ds authentication. Error=`, err.message, err.response && err.response.data);
         return Promise.reject(err.message);
       });
+
+      response.data.transaction_id = transaction_id;
       
       AppLogger.info(correlation_id, `${method_name} - end`, response.data);
       return JSON.stringify(<GlobalPayThreeDS.IInitiateAuthenticationResponseData>response.data);
@@ -259,9 +305,79 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
     }
   }
 
+  private async obtainAuthenticationData(correlation_id: string, req: Request) {
+    const method_name = "GlobalpayProvider/obtainAuthenticationData";
+    AppLogger.info(correlation_id, `${method_name} - start`);
+    try {
+      const server_trans_id = req.body.threeDSServerTransID;
+      const request_timestamp = new Date().toISOString().slice(0,-1);
+      const securehash = await this.generateObtainAuthenticationDataHash(correlation_id, request_timestamp, this.config.merchant_id, server_trans_id);
+      const authenticationDataResponse = await axios.get(`${this.config.base_url}${this.config.endpoints.init_authentication}/${server_trans_id}?merchant_id=${this.config.merchant_id}&request_timestamp=${request_timestamp}`, {
+        headers: {
+          Authorization: securehash,
+          "X-GP-VERSION": "2.2.0"
+        }
+      }).catch(err => {
+        AppLogger.error("Failed axios request", err)
+      });
+      return authenticationDataResponse["data"];
+    } catch (err) {
+      AppLogger.error(correlation_id, `${method_name} Error=`, err);
+      return Promise.reject(err);
+    }
+  }
+  
+  private async authorize3DSPayment(correlation_id: string, req: Request) {
+    const method_name = "GlobalpayProvider/authorize3DSPayment";
+    AppLogger.info(correlation_id, `${method_name} - start`);
+    try {
+      const { card, authentication_data, transaction_data } = req.body;
+
+      const headers = {
+        'Content-Type': 'text/xml'
+      };
+
+      const request_timestamp = new Date().toJSON().slice(0, -5).replace(/[^\d]/g, "");
+      const securehash = await this.generateAuthorizationHash(correlation_id, request_timestamp, this.config.merchant_id, transaction_data.id, transaction_data.amount, transaction_data.currency, card.number);
+      const xmlBody = 
+`<?xml version="1.0" encoding="UTF-8"?>
+<request type="auth" timestamp="${request_timestamp}">
+  <merchantid>${this.config.merchant_id}</merchantid>
+  <account>internet</account>
+  <orderid>${transaction_data.id}</orderid>
+  <amount currency="${transaction_data.currency}">${transaction_data.amount}</amount>
+  <card>
+    <number>${card.number}</number>
+    <expdate>${card.expMonth}${String(card.expYear).slice(-2)}</expdate>
+    <chname>${card.cardHolderName}</chname>
+    <type>VISA</type>
+    <cvn>
+      <number>${card.cvn}</number>
+      <presind>1</presind>
+    </cvn>
+  </card>
+  <autosettle flag="1"/>
+  <mpi>
+    <eci>${authentication_data.eci}</eci>
+    <ds_trans_id>${authentication_data.ds_trans_id}</ds_trans_id>
+    <authentication_value>${authentication_data.authentication_value}</authentication_value>
+    <message_version>${authentication_data.message_version}</message_version>
+  </mpi>
+  <sha1hash>${securehash.slice("securehash ".length)}</sha1hash>
+</request>`
+
+      const response = await axios.post("https://api.sandbox.realexpayments.com/epage-remote.cgi", xmlBody, { headers });
+
+      return response.data
+    } catch (err) {
+      AppLogger.error(correlation_id, `${method_name} Error=`, err);
+      return Promise.reject(err);
+    }
+  }
+
   private generate3DSCheckVersionHash(correlation_id: string, merchant_id: string, card_number: string): string {
     const method_name = "GlobalpayProvider/generate3DSCheckVersionHash";
-    AppLogger.info(correlation_id, `${method_name} - start`);
+    AppLogger.info(correlation_id, `${method_name} - start`, merchant_id, card_number);
     try {
       const request_timestamp = new Date().toISOString().slice(0,-1);
       AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
@@ -280,9 +396,40 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
     const method_name = "GlobalpayProvider/generateInitiateAuthenticationHash";
     AppLogger.info(correlation_id, `${method_name} - start`);
     try {
-      // const request_timestamp = new Date().toISOString().slice(0,-1);
       AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
       const partial_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${request_timestamp}.${merchant_id}.${card_number}.${server_trans_id}`);
+      AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
+      const final_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${partial_hash}.${Globals.gateways_config.globalpay.authentication.shared_secret}`);
+      AppLogger.info(correlation_id, `${method_name} - end`);
+      return `securehash ${final_hash}`;
+    } catch (err) {
+      AppLogger.error(correlation_id, `${method_name} Error=`, err);
+      throw err;
+    }
+  }
+  
+  private generateObtainAuthenticationDataHash(correlation_id: string, request_timestamp: string, merchant_id: string, server_trans_id: string): string {
+    const method_name = "GlobalpayProvider/generateObtainAuthenticationDataHash";
+    AppLogger.info(correlation_id, `${method_name} - start`);
+    try {
+      AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
+      const partial_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${request_timestamp}.${merchant_id}.${server_trans_id}`);
+      AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
+      const final_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${partial_hash}.${Globals.gateways_config.globalpay.authentication.shared_secret}`);
+      AppLogger.info(correlation_id, `${method_name} - end`);
+      return `securehash ${final_hash}`;
+    } catch (err) {
+      AppLogger.error(correlation_id, `${method_name} Error=`, err);
+      throw err;
+    }
+  }
+  
+  private generateAuthorizationHash(correlation_id: string, request_timestamp: string, merchant_id: string, order_id: string, amount: string, currency: string, card_number: string): string {
+    const method_name = "GlobalpayProvider/generateAuthorizationHash";
+    AppLogger.info(correlation_id, `${method_name} - start`);
+    try {
+      AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
+      const partial_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${request_timestamp}.${merchant_id}.${order_id}.${amount}.${currency}.${card_number}`);
       AppLogger.verbose(correlation_id, `${method_name} - calling CryptoProvider/generateSHA1Hash`);
       const final_hash = CryptoProvider.generateSHA1Hash(correlation_id, `${partial_hash}.${Globals.gateways_config.globalpay.authentication.shared_secret}`);
       AppLogger.info(correlation_id, `${method_name} - end`);

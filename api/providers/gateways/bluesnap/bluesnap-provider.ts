@@ -27,7 +27,6 @@ export class BluesnapProvider extends BaseGatewayProvider {
     try {
       const { username, password } = Globals.gateways_config.bluesnap;
       const authorization = Buffer.from(`${username}:${password}`).toString("base64");
-      console.log("authorization header:::", authorization)
       const { data: clientToken } = await axios.get(`${Globals.gateways_config.bluesnap.base_url}/services/2/payment-fields-tokens`, { headers: {
         Authorization: `Basic ${authorization}`
       }});
