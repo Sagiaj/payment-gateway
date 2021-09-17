@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosRequestConfig, Method } from "axios";
 import { v4 as uuid } from "uuid";
 import { Request } from "express";
 import { ErrorCodes } from "../../../error-codes";
@@ -181,26 +181,24 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         method_notification_url: `${base_wh_url}${Globals.webhooks.endpoints.wh_3ds_method_url_notification_endpoint}`,
         challenge_notification_url: `${base_wh_url}${Globals.webhooks.endpoints.wh_acs_challenge_complete_endpoint}`
       };
-      const response = await axios.post(`${this.config.base_url}${this.config.endpoints.threeds_check_version}`, body, {
-        headers: {
-          Authorization: securehash,
-          "X-GP-VERSION": "2.2.0"
-        }
-      }).catch((err: AxiosError) => {
-        AppLogger.error(correlation_id, `${method_name} - Failed checking 3DS Version. Error=`, err.message);
-        return Promise.reject(err.message);
-      });
-      
-      AppLogger.info(correlation_id, `${method_name} - end`, response.data);
+      const response = await makeCustomRequest(
+        correlation_id,
+        `${this.config.base_url}${this.config.endpoints.threeds_check_version}`,
+        "POST",
+        { Authorization: securehash, "X-GP-VERSION": "2.2.0" },
+        body
+      );
+
+      AppLogger.info(correlation_id, `${method_name} - end`, response);
       return <GlobalPayThreeDS.ICheckVersionResponseData>{
-        enrolled: response.data["enrolled"],
-        serverTransactionId: response.data["server_trans_id"],
-        methodData: response.data["method_data"]["encoded_method_data"],
-        methodUrl: response.data["method_url"],
+        enrolled: response["enrolled"],
+        serverTransactionId: response["server_trans_id"],
+        methodData: response["method_data"]["encoded_method_data"],
+        methodUrl: response["method_url"],
         versions: {
           accessControlServer: {
-            start: response.data["ds_protocol_version_start"],
-            end: response.data["ds_protocol_version_end"]
+            start: response["ds_protocol_version_start"],
+            end: response["ds_protocol_version_end"]
           }
         }
       };
@@ -285,22 +283,19 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         challenge_notification_url: `${base_wh_url}${Globals.webhooks.endpoints.wh_acs_challenge_complete_endpoint}`
       };
 
-      const response = await axios.post(`${this.config.base_url}${this.config.endpoints.init_authentication}`, body, {
-        headers: {
-          Authorization: securehash,
-          "X-GP-VERSION": "2.2.0"
-        }
-      }).catch((err: AxiosError) => {
-        AppLogger.error(correlation_id, `${method_name} - Failed Initiating 3ds authentication. Error=`, err.message, err.response && err.response.data);
-        return Promise.reject(err.message);
-      });
+      const response = await makeCustomRequest(
+        correlation_id,
+        `${this.config.base_url}${this.config.endpoints.init_authentication}`,
+        "POST",
+        { Authorization: securehash, "X-GP-VERSION": "2.2.0" },
+        body
+      );
 
-      response.data.transaction_id = transaction_id;
-      
-      AppLogger.info(correlation_id, `${method_name} - end`, response.data);
-      return JSON.stringify(<GlobalPayThreeDS.IInitiateAuthenticationResponseData>response.data);
+      response.transaction_id = transaction_id;
+      AppLogger.info(correlation_id, `${method_name} - end`, response);
+      return JSON.stringify(<GlobalPayThreeDS.IInitiateAuthenticationResponseData>response);
     } catch (err) {
-      AppLogger.error(correlation_id, `${method_name} Error=`, err);
+      AppLogger.error(correlation_id, `${method_name} Failed Initiating 3ds authentication. Error=`, err);
       return Promise.reject(err);
     }
   }
@@ -312,14 +307,13 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
       const server_trans_id = req.body.threeDSServerTransID;
       const request_timestamp = new Date().toISOString().slice(0,-1);
       const securehash = await this.generateObtainAuthenticationDataHash(correlation_id, request_timestamp, this.config.merchant_id, server_trans_id);
-      const authenticationDataResponse = await axios.get(`${this.config.base_url}${this.config.endpoints.init_authentication}/${server_trans_id}?merchant_id=${this.config.merchant_id}&request_timestamp=${request_timestamp}`, {
-        headers: {
-          Authorization: securehash,
-          "X-GP-VERSION": "2.2.0"
-        }
-      }).catch(err => {
-        AppLogger.error("Failed axios request", err)
-      });
+      const authenticationDataResponse = await makeCustomRequest(
+        correlation_id,
+        `${this.config.base_url}${this.config.endpoints.init_authentication}/${server_trans_id}?merchant_id=${this.config.merchant_id}&request_timestamp=${request_timestamp}`,
+        "GET",
+        { Authorization: securehash, "X-GP-VERSION": "2.2.0" },
+        undefined
+      );
       return authenticationDataResponse["data"];
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name} Error=`, err);
@@ -366,9 +360,15 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
   <sha1hash>${securehash.slice("securehash ".length)}</sha1hash>
 </request>`
 
-      const response = await axios.post("https://api.sandbox.realexpayments.com/epage-remote.cgi", xmlBody, { headers });
+      const response = await makeCustomRequest(
+        correlation_id,
+        "https://api.sandbox.realexpayments.com/epage-remote.cgi",
+        "POST",
+        headers,
+        xmlBody
+      );
 
-      return response.data
+      return response;
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name} Error=`, err);
       return Promise.reject(err);
@@ -438,5 +438,29 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
       AppLogger.error(correlation_id, `${method_name} Error=`, err);
       throw err;
     }
+  }
+}
+
+const makeCustomRequest = async (correlation_id: string, url: string, method: Method, headers: any, body: any) => {
+  const method_name = `GlobalpayProvider/makeCustomRequest`;
+  AppLogger.verbose(correlation_id, `${method_name} - start`);
+  try {
+    const request_options: AxiosRequestConfig = {
+      method,
+      url,
+      headers,
+      data: body
+    };
+    AppLogger.verbose(correlation_id, `${method_name} - Request options:`, request_options);
+    const result = await axios.request(request_options).catch((err: AxiosError) => {
+      AppLogger.error(correlation_id, `${method_name} - Errored in custom request. Error=`, err.message);
+      return Promise.reject(err.message);
+    });
+
+    AppLogger.verbose(correlation_id, `${method_name} - end. result=`, result.data);
+    return result.data;
+  } catch (err) {
+    AppLogger.error(correlation_id, `${method_name} - Error=`, err.message);
+    throw err;
   }
 }
