@@ -453,7 +453,7 @@ const makeCustomRequest = async (correlation_id: string, url: string, method: Me
     };
     AppLogger.verbose(correlation_id, `${method_name} - Request options:`, request_options);
     const result = await axios.request(request_options).catch((err: AxiosError) => {
-      AppLogger.error(correlation_id, `${method_name} - Errored in custom request. Error=`, err.message);
+      AppLogger.error(correlation_id, `${method_name} - Errored in custom request. Error=`, err);
       return Promise.reject(err.message);
     });
 
