@@ -314,7 +314,7 @@ export class GlobalpayProvider extends BaseGatewayProvider implements IBaseGatew
         { Authorization: securehash, "X-GP-VERSION": "2.2.0" },
         undefined
       );
-      return authenticationDataResponse["data"];
+      return authenticationDataResponse;
     } catch (err) {
       AppLogger.error(correlation_id, `${method_name} Error=`, err);
       return Promise.reject(err);
