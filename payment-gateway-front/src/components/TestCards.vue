@@ -35,7 +35,7 @@ export default {
         },
         AUTHENTICATION_SUCCESSFUL_NO_METHOD_URL: {
             "Card Number": "4222000006724235",
-            "Flow Type": "Frictionless - Success - No payment method verification",
+            "Flow Type": "Frictionless - Automatic failure - No payment method verification",
             "Transaction Result": "AUTHENTICATION_SUCCESSFUL - No Method URL",
             "ECI*": "05"
         },
