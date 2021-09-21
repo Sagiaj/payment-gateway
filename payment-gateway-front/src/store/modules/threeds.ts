@@ -162,11 +162,11 @@ const actions: ActionTree<ThreeDSState, any> = {
         );
       } else if (transactionFinalized) {
         await dispatch("setCurrentAction", ProviderPaymentStatuses.PaymentSuccessful, { root: true });
-        const transactionMessage = new TransactionMessage(authenticationData.status, authenticationData.status_reason);
-        console.log(`${method_name} - ThreeDS transaction status '${authenticationData.status}' is final. Finishing process with reason '${authenticationData.status_reason}'`);
+        const transactionMessage = new TransactionMessage(authenticationData.status, <any>authenticationData.status);
+        console.log(`${method_name} - ThreeDS transaction status '${authenticationData.status}' is final. Finishing process with reason '${authenticationData.status}'`);
         await dispatch("setPopupMessage", transactionMessage, { root: true });
       } else {
-        console.log(`${method_name} - Unknown status '${authenticationData.status}'. Finishing process with reason '${authenticationData.status_reason}'`);
+        console.log(`${method_name} - Unknown status '${authenticationData.status}'. Finishing process with reason '${authenticationData.status}'`);
         await dispatch("setPopupMessage", new TransactionMessage(), { root: true });
       }
 
@@ -192,7 +192,7 @@ const actions: ActionTree<ThreeDSState, any> = {
       console.log(`${method_name} - calling GlobalpayProvider/obtain3DSAuthenticationData with threeDSServerTransID=`, threeDSServerTransID);
       const authenticationData = await provider.obtain3DSAuthenticationData(threeDSServerTransID);
       const authorizationData = await provider.authorize3DSPayment(authenticationData, convertToGlobalPayCardFields(state.cardData), rootState.transactionData);
-      console.log(`${method_name} - ThreeDS ACS challenge complete status '${authenticationData.status}'. Finishing process with reason '${authenticationData.status_reason}'`);
+      console.log(`${method_name} - ThreeDS ACS challenge complete status '${authenticationData.status}'. Finishing process with reason '${authenticationData.status}'`);
       await dispatch("setPopupMessage", new TransactionMessage(authenticationData.status, TransactionStatusReason.MediumConfidence), { root: true });
       await dispatch("setLoadingState", false, { root: true });
       dispatch("setFinishedTransaction", true, { root: false });
